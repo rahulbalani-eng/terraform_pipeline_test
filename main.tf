@@ -48,6 +48,7 @@ terraform {
 
     tags = {
       Name = "ansible-demo-server"
+      Environment = "demo"
     }
 
     # Wait for instance to be ready
