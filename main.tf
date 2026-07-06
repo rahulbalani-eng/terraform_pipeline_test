@@ -1,32 +1,67 @@
 terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+    required_version = ">= 1.0"
+    required_providers {
+      aws = {
+        source  = "hashicorp/aws"
+        version = "~> 5.0"
+      }
     }
   }
-}
 
-provider "aws" {
-  region = var.region
-}
-
-# Free-tier eligible t2.micro instance
-resource "aws_instance" "demo" {
-  ami           = var.ami_id
-  instance_type = "t2.micro"  # Free tier eligible
-  key_name      = var.key_name
-
-  tags = {
-    Name = "ansible-demo-instance"
+  provider "aws" {
+    region = var.aws_region
   }
 
-  # Output the public IP for Ansible inventory
-  provisioner "local-exec" {
-    command = "echo ${self.public_ip} > inventory.txt"
-  }
-}
+  # Security group for SSH and HTTP
+  resource "aws_security_group" "demo" {
+    name        = "ansible-demo-sg"
+    description = "Allow SSH and HTTP"
 
-output "instance_ip" {
-  value = aws_instance.demo.public_ip
-}
+    ingress {
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    ingress {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    egress {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  # Free tier t2.micro instance
+  resource "aws_instance" "demo" {
+    ami                    = var.ami_id
+    instance_type          = "t2.micro"
+    key_name               = var.key_name
+    vpc_security_group_ids = [aws_security_group.demo.id]
+
+    tags = {
+      Name = "ansible-demo-server"
+    }
+
+    # Wait for instance to be ready
+    provisioner "local-exec" {
+      command = "sleep 30"
+    }
+  }
+
+  # Output for Ansible
+  output "instance_public_ip" {
+    value       = aws_instance.demo.public_ip
+    description = "Public IP of the EC2 instance"
+  }
+
+  output "instance_id" {
+    value = aws_instance.demo.id
+  }
