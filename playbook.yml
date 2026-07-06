@@ -1,30 +1,85 @@
----
-- name: Configure Demo Server
-  hosts: all
-  become: yes
-  
-  tasks:
-    - name: Update system packages
-      yum:
-        name: "*"
-        state: latest
-      when: ansible_os_family == "RedHat"
+- name: Configure Web Server
+    hosts: all
+    become: yes
+    gather_facts: yes
 
-    - name: Install required packages
-      yum:
-        name:
-          - httpd
-          - git
-        state: present
-      when: ansible_os_family == "RedHat"
+    tasks:
+      - name: Update system packages
+        yum:
+          name: "*"
+          state: latest
+        when: ansible_os_family == "RedHat"
 
-    - name: Start and enable Apache
-      service:
-        name: httpd
-        state: started
-        enabled: yes
+      - name: Install Apache and dependencies
+        yum:
+          name:
+            - httpd
+            - git
+            - curl
+          state: present
+        when: ansible_os_family == "RedHat"
 
-    - name: Create welcome page
-      copy:
-        content: "<h1>Hello from Harness IaCM + Ansible!</h1>"
-        dest: /var/www/html/index.html
+      - name: Create index.html
+        copy:
+          content: |
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Harness IaCM Demo</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        max-width: 800px;
+                        margin: 50px auto;
+                        padding: 20px;
+                        background: #f5f5f5;
+                    }
+                    .container {
+                        background: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    h1 { color: #00ade4; }
+                    .info { 
+                        background: #f0f0f0;
+                        padding: 15px;
+                        border-radius: 4px;
+                        margin: 10px 0;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🚀 Hello from Harness IaCM!</h1>
+                    <p><strong>Infrastructure provisioned with Terraform</strong></p>
+                    <p><strong>Configured with Ansible</strong></p>
+                    <div class="info">
+                        <p><strong>Hostname:</strong> {{ ansible_hostname }}</p>
+                        <p><strong>IP Address:</strong> {{ ansible_default_ipv4.address }}</p>
+                        <p><strong>OS:</strong> {{ ansible_distribution }} {{ ansible_distribution_version }}</p>
+                        <p><strong>Architecture:</strong> {{ ansible_architecture }}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+          dest: /var/www/html/index.html
+          mode: '0644'
+
+      - name: Start and enable Apache
+        service:
+          name: httpd
+          state: started
+          enabled: yes
+
+      - name: Verify Apache is running
+        uri:
+          url: http://localhost
+          status_code: 200
+        register: result
+        retries: 3
+        delay: 2
+
+      - name: Display success message
+        debug:
+          msg: "Web server successfully configured! Access at http://{{ ansible_default_ipv4.address }}"
