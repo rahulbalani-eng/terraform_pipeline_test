@@ -1,0 +1,30 @@
+---
+- name: Configure Demo Server
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Update system packages
+      yum:
+        name: "*"
+        state: latest
+      when: ansible_os_family == "RedHat"
+
+    - name: Install required packages
+      yum:
+        name:
+          - httpd
+          - git
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Start and enable Apache
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: Create welcome page
+      copy:
+        content: "<h1>Hello from Harness IaCM + Ansible!</h1>"
+        dest: /var/www/html/index.html
