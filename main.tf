@@ -10,3 +10,5 @@ terraform {
 resource "random_pet" "demo" {
   length = 2
 }
+resource "terraform_data" "demo" {
+}
